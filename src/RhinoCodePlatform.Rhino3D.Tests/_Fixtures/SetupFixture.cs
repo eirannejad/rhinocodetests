@@ -7,12 +7,16 @@ using NUnit.Framework;
 
 using Rhino.Runtime.Code;
 using Rhino.Runtime.Code.Languages;
+using Rhino.Runtime.Code.Logging;
+using Rhino.Runtime.Code.Environments;
 
 namespace RhinoCodePlatform.Rhino3D.Tests
 {
     [SetUpFixture]
     public sealed class SetupFixture : Rhino.Testing.Fixtures.RhinoSetupFixture
     {
+        public const string RHINOCODE_LOG_LEVEL_ENVVAR = "RHINOCODE_LOG_LEVEL";
+
         static readonly MxTestSettings s_settings;
 
         static SetupFixture()
@@ -23,7 +27,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             {
                 try
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof(MxTestSettings));
+                    XmlSerializer serializer = new(typeof(MxTestSettings));
                     s_settings = Rhino.Testing.Configs.Deserialize<MxTestSettings>(serializer, settingsFile);
 
                     return;
@@ -57,14 +61,21 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             }
 
             LoadLanguages();
+            LoadGrasshopperPlugins();
+            LoadRhinoCode();
         }
 
-        sealed class StatusResponder : ProgressStatusResponder
+        sealed class TextContextStatusResponder : ProgressStatusResponder
         {
             public override void StatusChanged(ILanguage language, ProgressChangedEventArgs args)
             {
+                // e.g.
+                // Initializing Python 3.9.10: 6% - Deploying runtime
                 int progress = Convert.ToInt32(language.Status.Progress.Value * 100);
-                Console.WriteLine($"Initializing languages {progress}%");
+                if (progress < 100)
+                    TestContext.Progress.WriteLine($"Initializing {language.Id.Name} {language.Id.Version}: {progress,3}% - {language.Status.Progress.Message}");
+                else
+                    TestContext.Progress.WriteLine($"Initializing {language.Id.Name} {language.Id.Version}: Complete");
             }
         }
 
@@ -73,13 +84,83 @@ namespace RhinoCodePlatform.Rhino3D.Tests
         {
             Registrar.StartScripting();
             Registrar.SendReportsToConsole = true;
-            RhinoCode.Languages.WaitStatusComplete(LanguageSpec.Any, new StatusResponder());
+            RhinoCode.Languages.WaitStatusComplete(LanguageSpec.Any, new TextContextStatusResponder());
             foreach (ILanguage language in RhinoCode.Languages)
             {
                 if (language.Status.IsErrored)
                 {
                     throw new Exception($"Language init error | {RhinoCode.Logger.Text}");
                 }
+
+                // cleanup all python 3 environments before running tests
+                else if (LanguageSpec.Python3.Matches(language.Id))
+                {
+                    IEnvirons environs = language.Environs;
+                    foreach (IEnviron environ in environs.QueryEnvirons())
+                    {
+                        if (environ.Id.StartsWith("default")
+                                || environ.Id.StartsWith("site-"))
+                        {
+                            continue;
+                        }
+
+                        environs.DeleteEnviron(environ);
+                    }
+                }
+            }
+        }
+
+        static void LoadGrasshopperPlugins()
+        {
+            string testPluginsPath = Path.Combine(s_settings.TestFilesDirectory, "gh1Plugins");
+
+            if (Directory.Exists(testPluginsPath))
+            {
+                LoadGHA(Directory.GetFiles(testPluginsPath, "*.gha"));
+            }
+        }
+
+        static void LoadRhinoCode()
+        {
+            if (Environment.GetEnvironmentVariable(RHINOCODE_LOG_LEVEL_ENVVAR) is string level)
+            {
+                LogLevel logLevel = (LogLevel)0xFF;
+
+                switch (level)
+                {
+                    case "trace":
+                        logLevel = LogLevel.Trace;
+                        break;
+
+                    case "debug":
+                        logLevel = LogLevel.Debug;
+                        break;
+
+                    case "info":
+                        logLevel = LogLevel.Info;
+                        break;
+
+                    case "warn":
+                    case "warning":
+                        logLevel = LogLevel.Warn;
+                        break;
+
+                    case "error":
+                        logLevel = LogLevel.Error;
+                        break;
+
+                    case "exception":
+                    case "critical":
+                        logLevel = LogLevel.Critical;
+                        break;
+                }
+
+                TestContext.Progress.WriteLine($"RhinoCode Log Level: {logLevel}");
+                RhinoCode.Logger.MessageLogged += (_, a) =>
+                {
+                    if (a.Level >= logLevel)
+                        TestContext.Progress.WriteLine(a.Message);
+                };
             }
         }
     }
