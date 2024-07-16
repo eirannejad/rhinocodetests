@@ -13,6 +13,14 @@
     <RhinoPluginsDirectory>/Users/ein/Library/Developer/Xcode/DerivedData/MacRhino-adkqakhshbdcdzbsmcnsychcdjwk/Build/Products/Debug/Rhinoceros.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugins</RhinoPluginsDirectory>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <GrasshopperPluginDirectory>$(RhinoPluginsDirectory)\Grasshopper</GrasshopperPluginDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <GrasshopperPluginDirectory>$(RhinoPluginsDirectory)\GrasshopperPlugin.rhp</GrasshopperPluginDirectory>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <DefineConstants>$(DefineConstants);RELEASE</DefineConstants>
   </PropertyGroup>
