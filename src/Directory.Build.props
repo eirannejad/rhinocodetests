@@ -9,8 +9,8 @@
     <IsPackable>false</IsPackable>
     <Nullable>disable</Nullable>
 
-    <RhinoSystemDirectory>$(MSBuildThisFileDirectory)..\..\..\..\bin\$(Configuration)</RhinoSystemDirectory>
-    <RhinoPluginsDirectory>$(MSBuildThisFileDirectory)..\..\..\..\bin\$(Configuration)\Plug-ins</RhinoPluginsDirectory>
+    <RhinoSystemDirectory>/Users/ein/Library/Developer/Xcode/DerivedData/MacRhino-adkqakhshbdcdzbsmcnsychcdjwk/Build/Products/Debug/Rhinoceros.app/Contents/Frameworks/RhCore.framework/Resources</RhinoSystemDirectory>
+    <RhinoPluginsDirectory>/Users/ein/Library/Developer/Xcode/DerivedData/MacRhino-adkqakhshbdcdzbsmcnsychcdjwk/Build/Products/Debug/Rhinoceros.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugins</RhinoPluginsDirectory>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

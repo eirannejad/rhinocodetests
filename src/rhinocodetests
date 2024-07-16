@@ -1,0 +1,8 @@
+#!/bin/bash
+export RHINOINSIDE_RHINOPATH=/Users/ein/Library/Developer/Xcode/DerivedData/MacRhino-adkqakhshbdcdzbsmcnsychcdjwk/Build/Products/Debug/Rhinoceros.app
+export DYLD_LIBRARY_PATH=$RHINOINSIDE_RHINOPATH/Contents/Frameworks
+echo "DYLD_LIBRARY_PATH =     "$DYLD_LIBRARY_PATH
+echo "RHINOINSIDE_RHINOPATH = "$RHINOINSIDE_RHINOPATH
+dotnet test src/RhinoCodePlatform.Rhino3D.Tests/RhinoCodePlatform.Rhino3D.Tests.csproj -f net7.0 -c Release
+export -n DYLD_LIBRARY_PATH
+export -n RHINOINSIDE_RHINOPATH

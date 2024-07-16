@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Settings>
-  <RhinoSystemDirectory>..\..\..\..\..\..\..\..\bin\Release</RhinoSystemDirectory>
+  <RhinoSystemDirectory>/Users/ein/Library/Developer/Xcode/DerivedData/MacRhino-adkqakhshbdcdzbsmcnsychcdjwk/Build/Products/Debug/Rhinoceros.app</RhinoSystemDirectory>
   <LoadLegacyIronPython>true</LoadLegacyIronPython>
   <LoadGrasshopper>true</LoadGrasshopper>
 
