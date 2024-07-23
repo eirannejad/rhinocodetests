@@ -78,7 +78,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             project.Identity.Version = new ProjectVersion(0, 1, 1234, 8888);
             project.Build(s_host, new NUnitProgressReporter());
 
-            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh8", "TestSingleComponent.gha")));
+            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh8", "TestSingleComponent.Components.gha")));
             Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh8", "testsinglecomponent-0.1.1234.8888-rh8-any.yak")));
 
             DeleteDirectory(rhprojfile, project.Settings.BuildPath);
@@ -96,7 +96,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             project.Build(s_host, new NUnitProgressReporter());
 
             Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7Build.rhp")));
-            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7Build.gha")));
+            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7Build.Components.gha")));
             Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "testrhino7build-0.1.1234.8888-rh7-any.yak")));
 
             DeleteDirectory(rhprojfile, project.Settings.BuildPath);
@@ -114,7 +114,8 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             project.Build(s_host, new NUnitProgressReporter());
 
             Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7BuildWithImage.rhp")));
-            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7BuildWithImage.gha")));
+            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7BuildWithImage.rui")));
+            Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "TestRhino7BuildWithImage.Components.gha")));
             Assert.IsTrue(File.Exists(Path.Combine(buildPath, "rh7", "testrhino7buildwithimage-0.1.1234.8888-rh7-any.yak")));
 
             DeleteDirectory(rhprojfile, project.Settings.BuildPath);
@@ -156,7 +157,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
                 projectNoHost.Build(s_host, new SilentProgressReporter());
             });
 
-            Assert.IsTrue(ex.Message.Contains("Project file is saved on Rhino 8.9 or earlier. Please re-save the project in Rhino 8.10 or above"));
+            Assert.IsTrue(ex.Message.Contains("Project file is saved on Rhino 8.9 or earlier. Please re-save the project in Rhino 8.11 or above"));
         }
 
         [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhproj", "TestOldGH.rhproj" })]
@@ -169,7 +170,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
                 project.Build(s_host, new SilentProgressReporter());
             });
 
-            Assert.IsTrue(ex.Message.Contains("Grasshopper file is saved on Rhino 8.9 or earlier. Please re-save the file in Rhino 8.10 or above"));
+            Assert.IsTrue(ex.Message.Contains("Grasshopper file is saved on Rhino 8.9 or earlier. Please re-save the file in Rhino 8.11 or above"));
 
             string buildPath = Path.Combine(Path.GetDirectoryName(rhprojfile), project.Settings.BuildPath.ToString());
             DeleteDirectory(rhprojfile, project.Settings.BuildPath);
@@ -185,7 +186,10 @@ namespace RhinoCodePlatform.Rhino3D.Tests
                 project.Build(s_host, new SilentProgressReporter());
             });
 
-            Assert.IsTrue(ex.Message.Contains("Grasshopper legacy RH_IN/RH_OUT params are only supported on Rhino 8.10 or above"));
+            Assert.IsTrue(ex.Message.Contains("Grasshopper legacy RH_IN/RH_OUT params are only supported on Rhino 8.11 or above"));
+
+            string buildPath = Path.Combine(Path.GetDirectoryName(rhprojfile), project.Settings.BuildPath.ToString());
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
         }
 
         static readonly Host s_host = new("Rhino3D_TESTs", new Version(0, 1));
