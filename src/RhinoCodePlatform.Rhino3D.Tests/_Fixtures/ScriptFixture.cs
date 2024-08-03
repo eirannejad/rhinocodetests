@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Rhino.Runtime.Code;
 using Rhino.Runtime.Code.Execution;
 using Rhino.Runtime.Code.Languages;
+using Rhino.Runtime.Code.Diagnostics;
 
 namespace RhinoCodePlatform.Rhino3D.Tests
 {
@@ -48,6 +49,19 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             }
 
             return fixture.m_language;
+        }
+
+        protected static bool TryGetTestFilesPath(out string fileDir)
+        {
+            Rhino.Testing.Configs configs = Rhino.Testing.Configs.Current;
+
+            if (SetupFixture.TryGetTestFiles(out fileDir))
+            {
+                fileDir = Path.GetFullPath(Path.Combine(configs.SettingsDir, fileDir));
+                return true;
+            }
+
+            return false;
         }
 
         protected static IEnumerable<string> GetTestScript(string subPath, string filename)
@@ -118,7 +132,11 @@ namespace RhinoCodePlatform.Rhino3D.Tests
                 if (scriptInfo.ExpectsError || scriptInfo.ExpectsWarning)
                 {
                     if (runEx.InnerException is CompileException compileEx)
+#if RC8_11
+                        errorMessage = compileEx.Diagnosis.ToString();
+#else
                         errorMessage = compileEx.Diagnostics.ToString();
+#endif
                     else
                         errorMessage = runEx.Message;
                 }
