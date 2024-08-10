@@ -311,7 +311,11 @@ public class Script_Instance
 
             using (DebugContext ctx = new())
             {
+#if RC8_11
+                using DebugGroup g = code.DebugWith(ctx);
+#else
                 using DebugGroup g = code.DebugWith(ctx, invokes: true);
+#endif
                 object a = default;
                 instance.RunScript(21, 21, ref a);
             }
@@ -1061,6 +1065,21 @@ Test(42);
 
             code.DebugControls = new DebugContinueAllControls();
             Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
+        public void TestCSharp_TextFlagLookup()
+        {
+            Code code = GetLanguage(this, LanguageSpec.CSharp).CreateCode(
+$@"
+// flag: grasshopper.inputs.marshaller.asStructs
+using System;
+");
+
+            var ctx = new RunContext();
+            code.Run(ctx);
+
+            Assert.IsTrue(ctx.Options.Get("grasshopper.inputs.marshaller.asStructs", false));
         }
 #endif
 
