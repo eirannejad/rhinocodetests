@@ -1,0 +1,54 @@
+{
+  "host": {
+    "name": "Rhino3D",
+    "version": "8.13.24304\u002B1000",
+    "os": "windows",
+    "arch": "x64"
+  },
+  "id": "bb225dcd-06c2-4af9-b46c-fdb18bfa44da",
+  "identity": {
+    "name": "TestNestedPathInContextComp",
+    "version": "0.1",
+    "publisher": {
+      "email": "ehsan@mcneel.com",
+      "name": "Ehsan Iran-Nejad",
+      "company": "McNeel",
+      "phone": "\u002B1 (888)-888 8888",
+      "address": "Pacific Northwest",
+      "country": "USA"
+    }
+  },
+  "settings": {
+    "buildPath": "build/",
+    "buildTarget": {
+      "host": {
+        "name": "Rhino3D",
+        "version": "8"
+      },
+      "title": "Rhino3D (8.*)",
+      "slug": "rh8"
+    },
+    "publishTarget": {
+      "title": "McNeel Yak Server"
+    }
+  },
+  "codes": [
+    {
+      "type": "components",
+      "id": "6aaacccf-067c-40ac-9825-99925f3e8a0f",
+      "language": {
+        "id": "*.gh1.grasshopper",
+        "version": "1.*.*"
+      },
+      "title": "TestNestedPathInContextComp.ghx",
+      "uri": "TestNestedPathInContextComp.ghx",
+      "scripts": [
+        {
+          "id": "6aaacccf-067c-40ac-9825-99925f3e8a0f",
+          "name": "TestNestedPathInContextComp",
+          "subcat": "Default"
+        }
+      ]
+    }
+  ]
+}

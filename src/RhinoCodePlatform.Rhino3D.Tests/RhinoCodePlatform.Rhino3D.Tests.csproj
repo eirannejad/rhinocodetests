@@ -4,32 +4,39 @@
     <!--<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net48;net7.0-windows</TargetFrameworks>-->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net7.0-windows</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX'))">net7.0</TargetFrameworks>
-    <LangVersion>10</LangVersion>
-    <IsPackable>false</IsPackable>
-    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Mono.Cecil" Version="0.11.4" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Include="NUnit" Version="3.14.0" />
-    <PackageReference Include="Rhino.Testing" Version="8.0.16-beta" />
+    <PackageReference Include="Rhino.Testing" Version="8.0.23-beta" ExcludeAssets="compile" GeneratePathProperty="true" />
+    <Reference Include="$(PkgRhino_Testing)\lib\net7.0\Rhino.Testing.dll" Private="true" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" PrivateAssets="all" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.4" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Rhino.Runtime.Code" HintPath="$(RhinoSystemDirectory)\Rhino.Runtime.Code.dll" Private="True" />
-    <Reference Include="RhinoCodePlatform.Rhino3D" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.Rhino3D.dll" Private="False" />
-    <Reference Include="RhinoCommon" HintPath="$(RhinoSystemDirectory)\RhinoCommon.dll" Private="False" />
-    <Reference Include="Grasshopper" HintPath="$(RhinoPluginsDirectory)\Grasshopper\Grasshopper.dll" Private="False" />
-    <Reference Include="GH_IO" HintPath="$(RhinoPluginsDirectory)\Grasshopper\GH_IO.dll" Private="False" />
 
-    <Reference Include="RhinoCodePluginGH" HintPath="$(RhinoPluginsDirectory)\Grasshopper\Components\RhinoCodePluginGH.gha" Private="False" />
+    <Reference Include="RhinoCommon" HintPath="$(RhinoSystemDirectory)\RhinoCommon.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.GH" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.GH.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.GH.Context" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.GH.Context.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.GH1" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.GH1.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.Projects" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.Projects.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.Rhino3D" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.Rhino3D.dll" Private="False" />
+    <Reference Include="Grasshopper" HintPath="$(GrasshopperPluginDirectory)\Grasshopper.dll" Private="False" />
+    <Reference Include="GH_IO" HintPath="$(GrasshopperPluginDirectory)\GH_IO.dll" Private="False" />
+    <Reference Include="RhinoCodePluginGH" HintPath="$(GrasshopperPluginDirectory)\Components\RhinoCodePluginGH.gha" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rhino.Runtime.Code.Testing\Rhino.Runtime.Code.Testing.csproj" />
+    <ProjectReference Include="..\RhinoCodePlatform.Rhino3D.Testing\RhinoCodePlatform.Rhino3D.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="Rhino.Testing.Configs.xml" CopyToOutputDirectory="Always" />
-    <None Include="..\Directory.Build.props" Link="Directory.Build.props" />
   </ItemGroup>
 </Project>

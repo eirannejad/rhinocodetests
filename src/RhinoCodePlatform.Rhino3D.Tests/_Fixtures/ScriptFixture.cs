@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using NUnit.Framework;
@@ -9,11 +11,13 @@ using Rhino.Runtime.Code;
 using Rhino.Runtime.Code.Execution;
 using Rhino.Runtime.Code.Languages;
 
+using RhinoCodePlatform.Rhino3D.Testing;
+
 namespace RhinoCodePlatform.Rhino3D.Tests
 {
     public abstract class ScriptFixture : Rhino.Testing.Fixtures.RhinoTestFixture
     {
-        sealed class NUnitStream : Stream
+        protected sealed class NUnitStream : Stream
         {
             public override bool CanRead { get; } = false;
             public override bool CanSeek { get; } = false;
@@ -29,20 +33,40 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             public override void Write(byte[] buffer, int offset, int count) => TestContext.Write(Encoding.UTF8.GetString(buffer));
         }
 
-        protected ILanguage m_language = default;
-
-        protected static ILanguage GetLanguage(ScriptFixture fixture, LanguageSpec languageSpec)
+        protected sealed class NUnitProgressReporter : ProgressReporter
         {
-            if (fixture.m_language is null)
+            protected override void WriteLine(string text) => TestContext.WriteLine(text);
+        }
+
+        protected static readonly Dispatcher s_dispatcher = new();
+
+        protected static ILanguage GetLanguage(LanguageSpec languageSpec) => RhinoCode.Languages.QueryLatest(languageSpec);
+
+        protected static bool TryGetTestFilesPath(out string fileDir)
+        {
+            Rhino.Testing.Configs configs = Rhino.Testing.Configs.Current;
+
+            if (SetupFixture.TryGetTestFiles(out fileDir))
             {
-                fixture.m_language = RhinoCode.Languages.QueryLatest(languageSpec);
-                if (fixture.m_language is null)
-                {
-                    throw new Exception($"Language query error | {RhinoCode.Logger.Text}");
-                }
+                fileDir = Path.GetFullPath(Path.Combine(configs.SettingsDir, fileDir));
+                return true;
             }
 
-            return fixture.m_language;
+            return false;
+        }
+
+        protected static bool TryGetTestFile(string subPath, out string filePath)
+        {
+            filePath = default;
+            Rhino.Testing.Configs configs = Rhino.Testing.Configs.Current;
+
+            if (SetupFixture.TryGetTestFiles(out string fileDir))
+            {
+                filePath = Path.GetFullPath(Path.Combine(configs.SettingsDir, fileDir, subPath));
+                return true;
+            }
+
+            return false;
         }
 
         protected static IEnumerable<string> GetTestScript(string subPath, string filename)
@@ -76,6 +100,9 @@ namespace RhinoCodePlatform.Rhino3D.Tests
         {
             return new RunContext
             {
+#if RC8_12
+                ResetStreamsPolicy = ResetStreamPolicy.ResetToPlatformStream,
+#endif
                 AutoApplyParams = true,
                 OutputStream = captureStdout ? GetOutputStream() : default,
                 Outputs = {
@@ -88,85 +115,76 @@ namespace RhinoCodePlatform.Rhino3D.Tests
 
         protected static bool TryRunCode(ScriptInfo scriptInfo, Code code, RunContext context, out string errorMessage)
         {
-            errorMessage = default;
-
-            if (scriptInfo.IsProfileTest)
+#if RC8_12
+            if (scriptInfo.ExpectsRhinoDocument)
             {
-                ProfileCode(scriptInfo, code, context);
-                return true;
+                Rhino.RhinoDoc currentDoc = Rhino.RhinoDoc.ActiveDoc;
+                using Rhino.RhinoDoc doc = CreateDocFromFile(scriptInfo.GetRhinoFile());
+                Rhino.RhinoDoc.ActiveDoc = doc;
+                bool res = TrySafeRunCode(scriptInfo, code, context, out errorMessage);
+                Rhino.RhinoDoc.ActiveDoc = currentDoc;
+                return res;
             }
-
-            try
-            {
-                code.Run(context);
-
-                if (context.OutputStream is NUnitStream stream)
-                {
-                    stream.Flush();
-                    stream.Dispose();
-                }
-
-                return true;
-            }
-            catch (ExecuteException runEx)
-            {
-                if (scriptInfo.ExpectsError || scriptInfo.ExpectsWarning)
-                {
-                    if (runEx.InnerException is CompileException compileEx)
-                        errorMessage = compileEx.Diagnostics.ToString();
-                    else
-                        errorMessage = runEx.Message;
-                }
-                else
-                    throw;
-            }
-
-            return false;
+            else
+#endif
+                return TrySafeRunCode(scriptInfo, code, context, out errorMessage);
         }
 
-        protected static void ProfileCode(ScriptInfo scriptInfo, Code code, RunContext context)
+        protected static Rhino.RhinoDoc CreateDoc()
         {
-#if !RC8_9
-            throw new NotImplementedException("Performance testing is not implemented for Rhino < 8.9");
-#else
-            // throw the first measurement out
-            // that usually takes longer since the script has to build and cache
-            code.Run(context);
+            Rhino.RhinoDoc doc = Rhino.RhinoDoc.CreateHeadless(string.Empty);
+            doc.Views.ActiveView =
+                doc.Views.Add(
+                        string.Empty,
+                        Rhino.Display.DefinedViewportProjection.Top,
+                        new System.Drawing.Rectangle(0, 0, 100, 100),
+                        floating: false
+                    );
 
-            int rounds = scriptInfo.ProfileRounds;
-            TimeSpan[] timeSpans = new TimeSpan[rounds];
-            context.CollectPerformanceMetrics = true;
+            return doc;
+        }
 
-            for (int i = 0; i < rounds; i++)
+        protected static Rhino.RhinoDoc CreateDocFromFile(string rhinofilepath)
+        {
+            return Rhino.RhinoDoc.OpenHeadless(rhinofilepath);
+        }
+
+        protected static string[] RunManyExclusiveStreams(Code code, int count)
+        {
+            code.Inputs.Add(new Param[]
             {
-                code.Run(context);
+                new ("a", typeof(int)),
+                new ("b", typeof(int)),
+            });
 
-                timeSpans[i] = context.LastExecuteTimeSpan;
-                context.ResetMetrics();
+            code.Build(new BuildContext());
+
+            var ts = new List<Task<string>>();
+            for (int i = 0; i < count; i++)
+            {
+                int id = i;
+                ts.Add(Task.Run(() =>
+                {
+                    var inputs = new ContextInputs
+                    {
+                        ["a"] = 21 + id,
+                        ["b"] = 21 + id,
+                    };
+
+                    var outStream = new RunContextStream();
+                    code.Run(new RunContext($"Execute [{i} of {count}]")
+                    {
+                        ExclusiveStreams = true,
+                        OutputStream = outStream,
+                        Inputs = inputs
+                    });
+
+                    return outStream.GetContents();
+                }));
             }
 
-            if (context.OutputStream is NUnitStream stream)
-            {
-                stream.Flush();
-                stream.Dispose();
-            }
-
-            PerfMonitor.ComputeDeviation(timeSpans, out TimeSpan meanTime, out TimeSpan stdDev);
-
-            TimeSpan fastest = meanTime - stdDev;
-            TimeSpan slowest = meanTime + stdDev;
-
-            TestContext.WriteLine($"\"{scriptInfo.Name}\" ran {rounds} times - fastest: {fastest}, slowest: {slowest}");
-
-            if (fastest <= scriptInfo.ExpectedFastest)
-            {
-                throw new Exception($"\"{scriptInfo.Name}\" is running faster than expected fastest of {scriptInfo.ExpectedFastest} (fastest: {fastest})");
-            }
-            else if (slowest >= scriptInfo.ExpectedSlowest)
-            {
-                throw new Exception($"\"{scriptInfo.Name}\" is running slower than expected slowest of {scriptInfo.ExpectedSlowest} (slowest: {slowest})");
-            }
-#endif
+            Task.WaitAll(ts.ToArray());
+            return ts.Select(t => t.Result).ToArray();
         }
 
         protected static void SkipBefore(int major, int minor)
@@ -183,6 +201,51 @@ namespace RhinoCodePlatform.Rhino3D.Tests
         {
             if (scriptInfo.IsSkipped)
                 Assert.Ignore();
+        }
+
+        static bool TrySafeRunCode(ScriptInfo scriptInfo, Code code, RunContext context, out string errorMessage)
+        {
+            errorMessage = default;
+
+            try
+            {
+#if RC8_12
+                if (scriptInfo.IsAsync)
+                {
+                    s_dispatcher.InvokeAsync(async () => await code.RunAsync(context))
+                                .Wait();
+                }
+
+                else
+#endif
+                    code.Run(context);
+
+                if (context.OutputStream is NUnitStream stream)
+                {
+                    stream.Flush();
+                    stream.Dispose();
+                }
+
+                return true;
+            }
+            catch (ExecuteException runEx)
+            {
+                if (scriptInfo.ExpectsError || scriptInfo.ExpectsWarning)
+                {
+                    if (runEx.InnerException is CompileException compileEx)
+#if RC8_11
+                        errorMessage = compileEx.Diagnosis.ToString();
+#else
+                        errorMessage = compileEx.Diagnostics.ToString();
+#endif
+                    else
+                        errorMessage = runEx.Message;
+                }
+                else
+                    throw;
+            }
+
+            return false;
         }
     }
 }

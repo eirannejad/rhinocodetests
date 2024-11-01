@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net7.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Rhino.Runtime.Code" HintPath="$(RhinoSystemDirectory)\Rhino.Runtime.Code.dll" Private="True" />
+
+    <Reference Include="RhinoCommon" HintPath="$(RhinoSystemDirectory)\RhinoCommon.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.GH" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.GH.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.GH.Context" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.GH.Context.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.Projects" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.Projects.dll" Private="False" />
+    <Reference Include="RhinoCodePlatform.Rhino3D" HintPath="$(RhinoSystemDirectory)\RhinoCodePlatform.Rhino3D.dll" Private="False" />
+    <Reference Include="Grasshopper" HintPath="$(GrasshopperPluginDirectory)\Grasshopper.dll" Private="False" />
+    <Reference Include="GH_IO" HintPath="$(GrasshopperPluginDirectory)\GH_IO.dll" Private="False" />
+    <Reference Include="RhinoCodePluginGH" HintPath="$(GrasshopperPluginDirectory)\Components\RhinoCodePluginGH.gha" Private="False" />
+  </ItemGroup>
+</Project>
