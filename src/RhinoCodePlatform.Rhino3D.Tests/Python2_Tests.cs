@@ -31,7 +31,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
 
             Code code = GetLanguage(LanguageSpec.Python2).CreateCode(scriptInfo.Uri);
 
-            RunContext ctx = GetRunContext();
+            RunContext ctx = GetRunContext(scriptInfo);
 
             if (TryRunCode(scriptInfo, code, ctx, out string errorMessage))
             {
@@ -1294,6 +1294,77 @@ import os
             Assert.AreEqual("21 21\n", outputs[0]);
             Assert.AreEqual("22 22\n", outputs[1]);
             Assert.AreEqual("23 23\n", outputs[2]);
+        }
+#endif
+
+#if RC8_14
+        [Test]
+        public void TestPython2_CompleteSignature_GH_CurveXCurve()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-81419
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-84661
+            Code code = GetLanguage(LanguageSpec.Python2).CreateCode(
+@"
+import ghpythonlib.components as comps
+comps.CurveXCurve(");
+
+            string text = code.Text;
+            IEnumerable<SignatureInfo> signatures =
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+
+            Assert.AreEqual(1, signatures.Count());
+
+            SignatureInfo sig;
+
+            sig = signatures.ElementAt(0);
+            Assert.AreEqual(0, sig.ParameterIndex);
+
+            Assert.AreEqual("CurveXCurve()", sig.Text);
+
+            Assert.AreEqual(@"
+Solve intersection events for two curves.
+Input:
+	curve_a [Curve] - First curve
+	curve_b [Curve] - Second curve
+Returns:
+	points [Point] - Intersection events
+	params_a [Number] - Parameters on first curve
+	params_b [Number] - Parameters on second curve".Replace(Environment.NewLine, "\n"), sig.Description);
+
+        }
+
+        [Test]
+        public void TestPython2_CompleteSignature_GH_CurveXCurve_FirstArg()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-84661
+            Code code = GetLanguage(LanguageSpec.Python2).CreateCode(
+@"
+import ghpythonlib.components as comps
+comps.CurveXCurve(arg,");
+
+            string text = code.Text;
+            IEnumerable<SignatureInfo> signatures =
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+
+            Assert.AreEqual(1, signatures.Count());
+
+            SignatureInfo sig;
+
+            sig = signatures.ElementAt(0);
+            Assert.AreEqual(1, sig.ParameterIndex);
+
+            Assert.AreEqual("CurveXCurve()", sig.Text);
+
+            Assert.AreEqual(@"
+Solve intersection events for two curves.
+Input:
+	curve_a [Curve] - First curve
+	curve_b [Curve] - Second curve
+Returns:
+	points [Point] - Intersection events
+	params_a [Number] - Parameters on first curve
+	params_b [Number] - Parameters on second curve".Replace(Environment.NewLine, "\n"), sig.Description);
+
         }
 #endif
 
