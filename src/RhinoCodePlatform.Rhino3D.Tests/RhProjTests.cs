@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.IO.Compression;
 using System.Collections.Generic;
+using System.Reflection;
 
 using NUnit.Framework;
 
@@ -633,7 +634,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
 #endif
 
 #if RC8_12
-            [Test]
+        [Test]
         public void TestRhProj_Create()
         {
             IProjectServer rhpServer = RhinoCode.ProjectServers.WherePasses(s_rhProjServerSpec).First();
@@ -660,7 +661,7 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             project.Add(path, new SourceCode(LanguageSpec.Python2, "#! python 3\nimport sys\nprint(sys.version)", new Uri(Path.GetTempFileName())));
 
             ProjectCode command;
-            
+
             command = project.GetCodes().ElementAt(0);
             Assert.AreEqual(LanguageSpec.Python2, command.LanguageSpec);
 
@@ -778,5 +779,88 @@ namespace RhinoCodePlatform.Rhino3D.Tests
             DeleteDirectory(rhprojfile, project.Settings.BuildPath);
         }
 #endif
+
+#if RC8_15
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhproj", "TestCommandHelpUri.rhproj" })]
+        public void TestRhProj_Build_CommandHelpUri(string rhprojfile)
+        {
+            IProject project = RhinoCode.ProjectServers.CreateProject(new Uri(rhprojfile));
+
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
+
+            project.Build(s_host, new NUnitProgressReporter());
+
+            string buildPath = Path.Combine(Path.GetDirectoryName(rhprojfile), project.Settings.BuildPath.ToString());
+            string rhpFile = Path.Combine(buildPath, "rh8", "TestCommandHelpUri.rhp");
+            Assert.IsTrue(File.Exists(rhpFile));
+            TryExtractProjectFromRHP(rhpFile, out IProject rhpProj);
+
+            RhinoCodePlatform.Projects.Rhino3DCommand cmd;
+
+            cmd = rhpProj.GetCodes().OfType<RhinoCodePlatform.Projects.Rhino3DCommand>().ElementAt(0);
+            Assert.AreEqual("https://www.rhino3d.com/", cmd.HelpURL.Light.ToString());
+
+            cmd = rhpProj.GetCodes().OfType<RhinoCodePlatform.Projects.Rhino3DCommand>().ElementAt(1);
+            Assert.AreEqual(string.Empty, cmd.HelpURL.Light.ToString());
+
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
+        }
+
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhproj", "TestRhino7CommandHelpUri.rhproj" })]
+        public void TestRhProj_Build_RhinoGH7_CommandHelpUri(string rhprojfile)
+        {
+            IProject project = RhinoCode.ProjectServers.CreateProject(new Uri(rhprojfile));
+
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
+
+            project.Build(s_host, new NUnitProgressReporter());
+
+            string buildPath = Path.Combine(Path.GetDirectoryName(rhprojfile), project.Settings.BuildPath.ToString());
+            string rhpFile = Path.Combine(buildPath, "rh7", "TestRhino7CommandHelpUri.rhp");
+            Assert.IsTrue(File.Exists(rhpFile));
+
+            byte[] rhpBytes = File.ReadAllBytes(rhpFile);
+            Assembly rhp = Assembly.Load(rhpBytes);
+
+            Type cmdType;
+            Rhino.Commands.Command cmd;
+            PropertyInfo prop;
+
+            cmdType = rhp.DefinedTypes.First(t => t.Name.StartsWith("ProjectCommand_Python_9be227a0"));
+            cmd = (Rhino.Commands.Command)Activator.CreateInstance(cmdType);
+            prop = cmdType.GetProperty("CommandContextHelpUrl", s_protectedFlags);
+            Assert.AreEqual(string.Empty, prop.GetValue(cmd));
+
+            cmdType = rhp.DefinedTypes.First(t => t.Name.StartsWith("ProjectCommand_Python_a9404519"));
+            cmd = (Rhino.Commands.Command)Activator.CreateInstance(cmdType);
+            prop = cmdType.GetProperty("CommandContextHelpUrl", s_protectedFlags);
+            Assert.AreEqual("https://www.rhino3d.com/", prop.GetValue(cmd));
+
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
+        }
+
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhproj", "TestCommandDefaultIcon.rhproj" })]
+        public void TestRhProj_Build_CommandDefaultIcon(string rhprojfile)
+        {
+            IProject project = RhinoCode.ProjectServers.CreateProject(new Uri(rhprojfile));
+
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
+
+            project.Identity.Version = new ProjectVersion(0, 1, 1234, 8888);
+            project.Build(s_host, new NUnitProgressReporter());
+
+            string buildPath = Path.Combine(Path.GetDirectoryName(rhprojfile), project.Settings.BuildPath.ToString());
+            string ruiFile = Path.Combine(buildPath, "rh8", "TestCommandDefaultIcon.rui");
+            string rui = File.ReadAllText(ruiFile);
+            Assert.IsTrue(rui.Contains("<icon guid=\"a55c3fa8-6202-45c1-8d79-e3641411fc18\">"));
+            Assert.IsTrue(rui.Contains("<icon guid=\"21ace57c-eb59-45b2-8e8a-c82b6b128d36\">"));
+            Assert.IsTrue(rui.Contains("<light><svg"));
+            Assert.IsTrue(rui.Contains("<dark><svg"));
+
+            DeleteDirectory(rhprojfile, project.Settings.BuildPath);
+        }
+#endif
+
+        static readonly BindingFlags s_protectedFlags = BindingFlags.NonPublic | BindingFlags.Instance;
     }
 }
