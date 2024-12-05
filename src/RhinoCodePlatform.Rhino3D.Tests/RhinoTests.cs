@@ -4,7 +4,7 @@ using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
+
 using NUnit.Framework;
 
 using Rhino;
@@ -35,49 +35,55 @@ namespace RhinoCodePlatform.Rhino3D.Tests
         [Test]
         public void TestRunScript_TestCommandArgs_CS()
         {
-            using MemoryMappedFile mmf_cs = GetSharedMemory("TestCommandArgsCS");
+            const string name = "TestCommandArgsCS";
+            using MemoryMappedFile mmf_cs = GetSharedMemory(name);
             Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "TestCommandArgsCS"));
-            AssertArgsReport(mmf_cs, RunMode.Interactive);
+            AssertArgsReport(name, mmf_cs, RunMode.Interactive);
         }
 
         [Test]
         public void TestRunScript_TestCommandArgs_Py3()
         {
-            using MemoryMappedFile mmf_py3 = GetSharedMemory("TestCommandArgsPy3");
+            const string name = "TestCommandArgsPy3";
+            using MemoryMappedFile mmf_py3 = GetSharedMemory(name);
             Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "TestCommandArgsPy3"));
-            AssertArgsReport(mmf_py3, RunMode.Interactive);
+            AssertArgsReport(name, mmf_py3, RunMode.Interactive);
         }
 
         [Test]
         public void TestRunScript_TestCommandArgs_Py2()
         {
-            using MemoryMappedFile mmf_py2 = GetSharedMemory("TestCommandArgsPy2");
+            const string name = "TestCommandArgsPy2";
+            using MemoryMappedFile mmf_py2 = GetSharedMemory(name);
             Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "TestCommandArgsPy2"));
-            AssertArgsReport(mmf_py2, RunMode.Interactive);
+            AssertArgsReport(name, mmf_py2, RunMode.Interactive);
         }
 
         [Test]
         public void TestRunScript_TestCommandArgs_Script_CS()
         {
-            using MemoryMappedFile mmf_cs = GetSharedMemory("TestCommandArgsCS");
+            const string name = "TestCommandArgsCS";
+            using MemoryMappedFile mmf_cs = GetSharedMemory(name);
             Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "-_TestCommandArgsCS"));
-            AssertArgsReport(mmf_cs, RunMode.Scripted);
+            AssertArgsReport(name, mmf_cs, RunMode.Scripted);
         }
 
         [Test]
         public void TestRunScript_TestCommandArgs_Script_Py3()
         {
-            using MemoryMappedFile mmf_py3 = GetSharedMemory("TestCommandArgsPy3");
+            const string name = "TestCommandArgsPy3";
+            using MemoryMappedFile mmf_py3 = GetSharedMemory(name);
             Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "-_TestCommandArgsPy3"));
-            AssertArgsReport(mmf_py3, RunMode.Scripted);
+            AssertArgsReport(name, mmf_py3, RunMode.Scripted);
         }
 
         [Test]
         public void TestRunScript_TestCommandArgs_Script_Py2()
         {
-            using MemoryMappedFile mmf_py2 = GetSharedMemory("TestCommandArgsPy2");
+            const string name = "TestCommandArgsPy2";
+            using MemoryMappedFile mmf_py2 = GetSharedMemory(name);
             Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "-_TestCommandArgsPy2"));
-            AssertArgsReport(mmf_py2, RunMode.Scripted);
+            AssertArgsReport(name, mmf_py2, RunMode.Scripted);
         }
 
         [Test]
@@ -96,16 +102,6 @@ namespace RhinoCodePlatform.Rhino3D.Tests
                 libfound |= Path.GetFileNameWithoutExtension(file) == "LibWithPackageRef";
             }
             Assert.IsTrue(libfound);
-        }
-#endif
-
-#if RC8_13
-        [Test]
-        public void TestRunScript_TestCommandArgs_GHCommand()
-        {
-            using MemoryMappedFile mmf = GetSharedMemory("TestCommandArgsGH");
-            Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "-_TestCommandArgsGH"));
-            Assert.IsTrue(GetReportLines(mmf).Any(l => l.StartsWith("TRUE")));
         }
 #endif
 
@@ -171,22 +167,77 @@ namespace RhinoCodePlatform.Rhino3D.Tests
         }
 #endif
 
-        //[Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhino", "test_redraw.py" })]
-        //public void TestRunScript_RedrawEnabled(string scriptfile)
-        //{
-        //    // https://mcneel.myjetbrains.com/youtrack/issue/RH-83100
-        //    Assert.IsTrue(RhinoDoc.ActiveDoc.Views.RedrawEnabled);
+#if RC8_15
+        [Test]
+        public void TestRunScript_TestCommandArgs_GH()
+        {
+            const string name = "TestCommandModeGH";
+            using MemoryMappedFile mmf_gh = GetSharedMemory(name);
+            Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "TestCommandModeGH"));
+            AssertArgsReport(name, mmf_gh, RunMode.Interactive);
+        }
 
-        //    RhinoApp.RunScript($"-_ScriptEditor Run {scriptfile}", echo: true);
-        //    Assert.IsTrue(RhinoDoc.ActiveDoc.Views.RedrawEnabled);
-        //}
+        [Test]
+        public void TestRunScript_TestCommandArgs_Script_GH()
+        {
+            const string name = "TestCommandModeGH";
+            using MemoryMappedFile mmf_gh = GetSharedMemory(name);
+            Assert.AreEqual(Result.Success, RhinoApp.ExecuteCommand(RhinoDoc.ActiveDoc, "-_TestCommandModeGH"));
+            AssertArgsReport(name, mmf_gh, RunMode.Scripted);
+        }
+
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhino", "test_command_args.cs" })]
+        public void TestRunScript_ScriptEditorCommandArgs_Script_CS(string scriptfile)
+        {
+            TestRunScript_ScriptEditorCommandArgs_Script("TestScriptEditorCommandArgsCS", scriptfile);
+        }
+
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhino", "test_command_args.py" })]
+        public void TestRunScript_ScriptEditorCommandArgs_Script_PY3(string scriptfile)
+        {
+            TestRunScript_ScriptEditorCommandArgs_Script("TestScriptEditorCommandArgsPy3", scriptfile);
+        }
+
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhino", "test_command_args.py2" })]
+        public void TestRunScript_ScriptEditorCommandArgs_Script_PY2(string scriptfile)
+        {
+            TestRunScript_ScriptEditorCommandArgs_Script("TestScriptEditorCommandArgsPy2", scriptfile);
+        }
+
+        [Test, TestCaseSource(nameof(GetTestScript), new object[] { "rhino", "test_redraw.py" })]
+        public void TestRunScript_RedrawEnabled(string scriptfile)
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85032
+            Assert.Ignore("Awaiting fix RH-85032");
+
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-83100
+            Assert.IsTrue(RhinoDoc.ActiveDoc.Views.RedrawEnabled);
+            Assert.IsTrue(RhinoApp.RunScript(RhinoDoc.ActiveDoc.RuntimeSerialNumber, $"-_ScriptEditor _Run \"{scriptfile}\"", echo: false));
+            Assert.IsTrue(RhinoDoc.ActiveDoc.Views.RedrawEnabled);
+        }
+
+        static void TestRunScript_ScriptEditorCommandArgs_Script(string name, string scriptfile)
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85032
+            Assert.Ignore("Awaiting fix RH-85032");
+
+            using MemoryMappedFile mmf = GetSharedMemory(name);
+            Assert.IsTrue(RhinoApp.RunScript(RhinoDoc.ActiveDoc.RuntimeSerialNumber, $"-_ScriptEditor _Run \"{scriptfile}\"", echo: false));
+            AssertArgsReport(name, mmf, RunMode.Scripted);
+        }
+#endif
 
         static readonly Regex s_cmdClassNameMatcher = new("RhinoCodePlatform.Rhino3D.Projects.Plugin.ProjectCommand_.{8}");
 
-        static void AssertArgsReport(MemoryMappedFile mmf, RunMode mode)
+        static void AssertArgsReport(string name, MemoryMappedFile mmf, RunMode mode)
         {
             string[] lines = GetReportLines(mmf);
 
+            TestContext.WriteLine($"< data name=\"{name}\">");
+            TestContext.Write(string.Join(Environment.NewLine, lines));
+            TestContext.WriteLine("</data>");
+
+            Assert.GreaterOrEqual(lines.Length, 4);
             Assert.IsTrue(s_cmdClassNameMatcher.IsMatch(lines[0]));
             Assert.AreEqual("Rhino.RhinoDoc", lines[1]);
             Assert.AreEqual(RunMode.Interactive == mode ? "Interactive" : "Scripted", lines[2]);
