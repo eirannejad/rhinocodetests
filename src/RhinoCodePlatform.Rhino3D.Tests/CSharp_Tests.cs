@@ -1830,7 +1830,9 @@ public class Script_Instance : GH_ScriptInstance
 
             // NOTE:
             // using BuildOptions does not add LIBRARY compile guard
-            Assert.IsTrue(library.TryBuild(new BuildOptions(), out CompileReference cred, out Diagnosis _));
+            var opts = new LibraryBuildOptions();
+            opts.CompileGuards.Remove(LibraryBuildOptions.DEFINE_LIBRARY.Identifier);
+            Assert.IsTrue(library.TryBuild(opts, out CompileReference cred, out Diagnosis _));
 
             byte[] data = File.ReadAllBytes(cred.Path);
             Assembly a = Assembly.Load(data);
@@ -1840,17 +1842,222 @@ public class Script_Instance : GH_ScriptInstance
 
             Assert.AreEqual(42, inst.TestNotLibrary());
         }
+
+        [Test]
+        public void TestCSharp_Complete_ProjectServerArgs_RhinoCommand()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85037
+            string s = @"// #! csharp
+using System;
+Console.WriteLine(__rhino_command__.";
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(s + @");
+Console.WriteLine(__rhino_doc__);
+Console.WriteLine(__rhino_runmode__);
+Console.WriteLine(__is_interactive__);
+");
+
+            code.Inputs.Set(RhinoCode.ProjectServers.GetArguments(LanguageSpec.CSharp));
+
+            IEnumerable<Ed.Common.CompletionItem> completions = CompleteAtEndingPeriod(code, s);
+
+            Assert.IsNotEmpty(completions);
+
+            string[] names = completions.Select(c => c.label).ToArray();
+            Assert.Contains(nameof(Rhino.Commands.Command.Id), names);
+            Assert.Contains(nameof(Rhino.Commands.Command.EnglishName), names);
+            Assert.Contains(nameof(Rhino.Commands.Command.LocalName), names);
+        }
+
+        [Test]
+        public void TestCSharp_Complete_ProjectServerArgs_RhinoDoc()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85037
+            string s = @"// #! csharp
+using System;
+Console.WriteLine(__rhino_command__);
+Console.WriteLine(__rhino_doc__.";
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(s + @");
+Console.WriteLine(__rhino_runmode__);
+Console.WriteLine(__is_interactive__);
+");
+
+            code.Inputs.Set(RhinoCode.ProjectServers.GetArguments(LanguageSpec.CSharp));
+
+            IEnumerable<Ed.Common.CompletionItem> completions = CompleteAtEndingPeriod(code, s);
+
+            Assert.IsNotEmpty(completions);
+
+            string[] names = completions.Select(c => c.label).ToArray();
+            Assert.Contains(nameof(Rhino.RhinoDoc.Bitmaps), names);
+            Assert.Contains(nameof(Rhino.RhinoDoc.HatchPatterns), names);
+        }
+
+        [Test]
+        public void TestCSharp_Complete_ProjectServerArgs_RhinoRunMode()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85037
+            string s = @"// #! csharp
+using System;
+Console.WriteLine(__rhino_command__);
+Console.WriteLine(__rhino_doc__);
+Console.WriteLine(__rhino_runmode__.";
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(s + @");
+Console.WriteLine(__is_interactive__);
+");
+
+            code.Inputs.Set(RhinoCode.ProjectServers.GetArguments(LanguageSpec.CSharp));
+
+            IEnumerable<Ed.Common.CompletionItem> completions = CompleteAtEndingPeriod(code, s);
+
+            Assert.IsNotEmpty(completions);
+
+            string[] names = completions.Select(c => c.label).ToArray();
+            Assert.Contains("byte", names);
+            Assert.Contains("char", names);
+            Assert.Contains(nameof(Enum.HasFlag), names);
+        }
+
+        [Test]
+        public void TestCSharp_Complete_ProjectServerArgs_RhinoRunModeIsInteractive()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85037
+            string s = @"// #! csharp
+using System;
+Console.WriteLine(__rhino_command__);
+Console.WriteLine(__rhino_doc__);
+Console.WriteLine(__rhino_runmode__);
+Console.WriteLine(__is_interactive__.";
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(s + @");
+");
+
+            code.Inputs.Set(RhinoCode.ProjectServers.GetArguments(LanguageSpec.CSharp));
+
+            IEnumerable<Ed.Common.CompletionItem> completions = CompleteAtEndingPeriod(code, s);
+
+            Assert.IsNotEmpty(completions);
+
+            string[] names = completions.Select(c => c.label).ToArray();
+            Assert.Contains(nameof(bool.TryFormat), names);
+        }
+
+        [Test]
+        public void TestCSharp_Complete_ProjectServerArgs_PositionInUsings()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85098
+            string s = @"// #! csharp
+using System;
+using System.Linq;
+using System.Threading;
+using System.";
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(s + @"
+using Rhino;
+
+var lcid = Rhino.ApplicationSettings.AppearanceSettings.LanguageIdentifier;
+var culture = System.Globalization.CultureInfo.GetCultureInfo(lcid);
+
+Console.WriteLine(lcid);
+
+Console.WriteLine(culture);
+Console.WriteLine(Thread.CurrentThread.CurrentCulture);
+Console.WriteLine(Thread.CurrentThread.CurrentUICulture);
+");
+
+            code.Inputs.Set(RhinoCode.ProjectServers.GetArguments(LanguageSpec.CSharp));
+
+            IEnumerable<Ed.Common.CompletionItem> completions = CompleteAtEndingPeriod(code, s);
+
+            Assert.IsNotEmpty(completions);
+
+            string[] names = completions.Select(c => c.label).ToArray();
+            Assert.Contains(nameof(System.Threading), names);
+            Assert.Contains(nameof(System.Globalization), names);
+        }
+
+        [Test]
+        public void TestCSharp_CompileGuard_Library_AsCode()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-84921
+            ILanguage csharp = GetLanguage(LanguageSpec.CSharp);
+
+            // ensure main.cs is executed including types.cs and
+            // without LIBRARY compile guard
+            TryGetTestFilesPath(out string fileDir);
+            Uri mainFile = new(Path.Combine(fileDir, "cs", "test_library_as_code", "Main.cs"));
+            Uri otherFile = new(Path.Combine(fileDir, "cs", "test_library_as_code", "Types.cs"));
+
+            Code code = csharp.CreateCode(mainFile);
+            code.Text.References.Add(new SourceCode(otherFile));
+
+            int _add_;
+            double _solve_;
+
+            var ctx = new RunContext
+            {
+                AutoApplyParams = true,
+                Outputs =
+                {
+                    [nameof(_add_)] = 0,
+                    [nameof(_solve_)] = 0d,
+                }
+            };
+
+            Assert.DoesNotThrow(() => code.Run(ctx));
+
+            Assert.IsTrue(ctx.Outputs.TryGet(nameof(_add_), out _add_));
+            Assert.AreEqual(52, _add_);
+
+            Assert.IsTrue(ctx.Outputs.TryGet(nameof(_solve_), out _solve_));
+            Assert.AreEqual(42, _solve_);
+        }
+
+        [Test]
+        public void TestCSharp_CompileGuard_Library_AsCode_Debug()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-84921
+            ILanguage csharp = GetLanguage(LanguageSpec.CSharp);
+
+            // ensure main.cs is executed including types.cs and
+            // without LIBRARY compile guard,
+            // and containing DEBUG guard
+            TryGetTestFilesPath(out string fileDir);
+            Uri mainFile = new(Path.Combine(fileDir, "cs", "test_library_as_code", "Main.cs"));
+            Uri otherFile = new(Path.Combine(fileDir, "cs", "test_library_as_code", "Types.cs"));
+
+            Code code = csharp.CreateCode(mainFile);
+            code.Text.References.Add(new SourceCode(otherFile));
+
+            int _add_;
+            double _solve_;
+
+            var ctx = new DebugContext
+            {
+                AutoApplyParams = true,
+                Outputs =
+                {
+                    [nameof(_add_)] = 0,
+                    [nameof(_solve_)] = 0d,
+                }
+            };
+
+            code.DebugControls = new DebugContinueAllControls();
+            Assert.DoesNotThrow(() => code.Debug(ctx));
+
+            Assert.IsTrue(ctx.Outputs.TryGet(nameof(_add_), out _add_));
+            Assert.AreEqual(500, _add_);
+
+            Assert.IsTrue(ctx.Outputs.TryGet(nameof(_solve_), out _solve_));
+            Assert.AreEqual(42, _solve_);
+        }
 #endif
 
         static IEnumerable<object[]> GetTestScripts() => GetTestScripts(@"cs\", "test_*.cs");
 
 #if RC8_15
-
         static IEnumerable<Ed.Common.CompletionItem> CompleteAtEndingPeriod(Code code, string textUptoPeriod)
         {
             if (code.Text.TryGetPosition(textUptoPeriod.Length, out TextPosition position))
             {
-                if (!code.Text.TryGetTransformed(SupportGroup.Complete, textUptoPeriod.Length, out string xformedCode, out int xformedPosition))
+                if (!code.Text.TryGetTransformed(textUptoPeriod.Length, CompleteOptions.Empty, out string xformedCode, out int xformedPosition))
                 {
                     xformedCode = code.Text;
                     xformedPosition = textUptoPeriod.Length;

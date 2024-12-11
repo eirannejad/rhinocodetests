@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 
 using Rhino.Runtime.Code;
+using Rhino.Runtime.Code.Text;
 using Rhino.Runtime.Code.Execution;
 using Rhino.Runtime.Code.Execution.Debugging;
 using Rhino.Runtime.Code.Execution.Profiling;
@@ -1116,7 +1117,11 @@ Rhino.Input.RhinoGet.GetOneObject(");
 
             string text = code.Text;
             IEnumerable<SignatureInfo> signatures =
+#if RC8_15
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteSignatureOptions.Empty);
+#else
                 code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+#endif
 
             Assert.AreEqual(2, signatures.Count());
 
@@ -1153,7 +1158,11 @@ Rhino.Input.RhinoGet.GetOneObject(prompt, ");
 
             string text = code.Text;
             IEnumerable<SignatureInfo> signatures =
+#if RC8_15
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteSignatureOptions.Empty);
+#else
                 code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+#endif
 
             Assert.AreEqual(2, signatures.Count());
 
@@ -1759,7 +1768,11 @@ Rhino.Input.RhinoGet.GetOneObject( (1,2,3), ");
 
             string text = code.Text;
             IEnumerable<SignatureInfo> signatures =
+#if RC8_15
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteSignatureOptions.Empty);
+#else
                 code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+#endif
 
             Assert.AreEqual(2, signatures.Count());
 
@@ -1785,7 +1798,11 @@ Rhino.Input.RhinoGet.GetOneObject(op.dirname(""test""),");
 
             string text = code.Text;
             IEnumerable<SignatureInfo> signatures =
+#if RC8_15
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteSignatureOptions.Empty);
+#else
                 code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+#endif
 
             Assert.AreEqual(2, signatures.Count());
 
@@ -2225,7 +2242,11 @@ comps.CurveXCurve(");
 
             string text = code.Text;
             IEnumerable<SignatureInfo> signatures =
+#if RC8_15
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteSignatureOptions.Empty);
+#else
                 code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+#endif
 
             Assert.AreEqual(1, signatures.Count());
 
@@ -2259,7 +2280,11 @@ comps.CurveXCurve(arg,");
 
             string text = code.Text;
             IEnumerable<SignatureInfo> signatures =
+#if RC8_15
+                code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteSignatureOptions.Empty);
+#else
                 code.Language.Support.CompleteSignature(SupportRequest.Empty, code, text.Length, CompleteOptions.Empty);
+#endif
 
             Assert.AreEqual(1, signatures.Count());
 
@@ -2529,6 +2554,37 @@ import os
             Assert.True(opts.Get("pythonnet.pureScope", false));
             Assert.True(opts.Get("python.reloadEngine", false));
             Assert.True(opts.Get("python.keepScope", false));
+        }
+
+        [Test]
+        public void TestPython3_Hover_Empty()
+        {
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85077
+            Code code = GetLanguage(LanguageSpec.Python3).CreateCode(
+@"
+import os
+jack : int = 42");
+
+            IEnumerable<HoverInfo> hovers =
+                code.Language.Support.Hover(SupportRequest.Empty, code, 1, HoverOptions.Empty);
+
+            Assert.IsEmpty(hovers);
+        }
+
+        [Test]
+        public void TestPython3_Hover_Int()
+        {
+            string s = @"
+import os
+jac";
+            // https://mcneel.myjetbrains.com/youtrack/issue/RH-85077
+            Code code = GetLanguage(LanguageSpec.Python3).CreateCode(s + "k : int = 42");
+
+            IEnumerable<HoverInfo> hovers =
+                code.Language.Support.Hover(SupportRequest.Empty, code, s.Length, HoverOptions.Empty);
+
+            Assert.IsNotEmpty(hovers);
+            Assert.AreEqual("int", hovers.First().Text);
         }
 #endif
 
