@@ -2630,14 +2630,14 @@ foreach (int {INDEX_VAR} in Enumerable.Range(0, 3)) // line 6
             // https://mcneel.myjetbrains.com/youtrack/issue/RH-85276
             Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(source);
 
-            DebugExpressionVariableResult getIndex(ExecFrame frame)
+            DebugExpressionExecVariableResult getIndex(ExecFrame frame)
             {
-                return frame.Evaluate().OfType<DebugExpressionVariableResult>().FirstOrDefault(r => r.Value.Id == index);
+                return frame.Evaluate().OfType<DebugExpressionExecVariableResult>().FirstOrDefault(r => r.Result.Id.Identifier == index);
             }
 
-            DebugExpressionVariableResult getSum(ExecFrame frame)
+            DebugExpressionExecVariableResult getSum(ExecFrame frame)
             {
-                return frame.Evaluate().OfType<DebugExpressionVariableResult>().FirstOrDefault(r => r.Value.Id == sum);
+                return frame.Evaluate().OfType<DebugExpressionExecVariableResult>().FirstOrDefault(r => r.Result.Id.Identifier == sum);
             }
 
             int bp6Counter = -1;
@@ -2661,47 +2661,43 @@ foreach (int {INDEX_VAR} in Enumerable.Range(0, 3)) // line 6
                             // first arrive at line 6
                             // i does not exist
                             case -1:
-                                DebugExpressionVariableResult er = getIndex(frame);
+                                DebugExpressionExecVariableResult er = getIndex(frame);
                                 Assert.IsNull(er);
                                 break;
 
                             // i = 0
                             case 0:
-                                DebugExpressionVariableResult er0 = getIndex(frame);
-                                Assert.IsInstanceOf<DebugExpressionVariableResult>(er0);
+                                DebugExpressionExecVariableResult er0 = getIndex(frame);
+                                Assert.IsInstanceOf<DebugExpressionExecVariableResult>(er0);
                                 // i does not exist in previous frame
-                                Assert.IsFalse(er0.IsModified);
-                                Assert.IsTrue(er0.Value.TryGetValue(out int v0));
+                                Assert.IsFalse(frame.HasModifiedResult(er0, prevFrame));
+                                Assert.IsTrue(er0.Result.TryGetValue(out int v0));
                                 Assert.AreEqual(0, v0);
                                 break;
 
                             // i = 1
                             case 1:
-                                DebugExpressionVariableResult er1 = getIndex(frame);
-                                er1 = getIndex(prevFrame).WithValue(er1.Value);
-                                Assert.IsFalse(er1.IsModified);
-                                Assert.IsTrue(er1.Value.TryGetValue(out int v1));
+                                DebugExpressionExecVariableResult er1 = getIndex(frame);
+                                Assert.IsFalse(frame.HasModifiedResult(er1, prevFrame));
+                                Assert.IsTrue(er1.Result.TryGetValue(out int v1));
                                 Assert.AreEqual(1, v1);
 
-                                DebugExpressionVariableResult ers1 = getSum(frame);
-                                ers1 = getSum(prevFrame).WithValue(ers1.Value);
-                                Assert.IsTrue(ers1.IsModified);      // sum is modified!
-                                Assert.IsTrue(ers1.Value.TryGetValue(out int sum1));
+                                DebugExpressionExecVariableResult ers1 = getSum(frame);
+                                Assert.IsTrue(frame.HasModifiedResult(ers1, prevFrame));      // sum is modified!
+                                Assert.IsTrue(ers1.Result.TryGetValue(out int sum1));
                                 Assert.AreEqual(1, sum1);
                                 break;
 
                             // i = 2
                             case 2:
-                                DebugExpressionVariableResult er2 = getIndex(frame);
-                                er2 = getIndex(prevFrame).WithValue(er2.Value);
-                                Assert.IsFalse(er2.IsModified);
-                                Assert.IsTrue(er2.Value.TryGetValue(out int v2));
+                                DebugExpressionExecVariableResult er2 = getIndex(frame);
+                                Assert.IsFalse(frame.HasModifiedResult(er2, prevFrame));
+                                Assert.IsTrue(er2.Result.TryGetValue(out int v2));
                                 Assert.AreEqual(2, v2);
 
-                                DebugExpressionVariableResult ers2 = getSum(frame);
-                                ers2 = getSum(prevFrame).WithValue(ers2.Value);
-                                Assert.IsTrue(ers2.IsModified);      // sum is modified!
-                                Assert.IsTrue(ers2.Value.TryGetValue(out int sum2));
+                                DebugExpressionExecVariableResult ers2 = getSum(frame);
+                                Assert.IsTrue(frame.HasModifiedResult(ers2, prevFrame));      // sum is modified!
+                                Assert.IsTrue(ers2.Result.TryGetValue(out int sum2));
                                 Assert.AreEqual(3, sum2);
                                 break;
 
@@ -2721,42 +2717,39 @@ foreach (int {INDEX_VAR} in Enumerable.Range(0, 3)) // line 6
                             // first arrive at line 8
                             // i = 0
                             case 0:
-                                DebugExpressionVariableResult er0 = getIndex(frame);
+                                DebugExpressionExecVariableResult er0 = getIndex(frame);
                                 // csharp does not stop twice on for loop so
                                 // i is not available in frame previous to this
-                                Assert.IsFalse(er0.IsModified);
-                                Assert.IsTrue(er0.Value.TryGetValue(out int v0));
+                                Assert.IsFalse(frame.HasModifiedResult(er0, prevFrame));
+                                Assert.IsTrue(er0.Result.TryGetValue(out int v0));
                                 Assert.AreEqual(0, v0);
                                 break;
 
                             // i = 1
                             case 1:
-                                DebugExpressionVariableResult er1 = getIndex(frame);
-                                er1 = getIndex(prevFrame).WithValue(er1.Value);
-                                Assert.IsTrue(er1.IsModified);      // i is modified!
-                                Assert.IsTrue(er1.Value.TryGetValue(out int v1));
+                                DebugExpressionExecVariableResult er1 = getIndex(frame);
+                                Assert.IsTrue(frame.HasModifiedResult(er1, prevFrame));      // i is modified!
+                                Assert.IsTrue(er1.Result.TryGetValue(out int v1));
                                 Assert.AreEqual(1, v1);
 
-                                DebugExpressionVariableResult ers0 = getSum(frame);
-                                Assert.IsInstanceOf<DebugExpressionVariableResult>(ers0);
-                                Assert.IsFalse(ers0.IsModified);
-                                Assert.IsTrue(ers0.Value.TryGetValue(out int sum0));
+                                DebugExpressionExecVariableResult ers0 = getSum(frame);
+                                Assert.IsInstanceOf<DebugExpressionExecVariableResult>(ers0);
+                                Assert.IsFalse(frame.HasModifiedResult(ers0, prevFrame));
+                                Assert.IsTrue(ers0.Result.TryGetValue(out int sum0));
                                 Assert.AreEqual(0, sum0);
                                 break;
 
                             // i = 2
                             case 2:
-                                DebugExpressionVariableResult er2 = getIndex(frame);
-                                er2 = getIndex(prevFrame).WithValue(er2.Value);
-                                Assert.IsTrue(er2.IsModified);      // i is modified!
-                                Assert.IsTrue(er2.Value.TryGetValue(out int v2));
+                                DebugExpressionExecVariableResult er2 = getIndex(frame);
+                                Assert.IsTrue(frame.HasModifiedResult(er2, prevFrame));      // i is modified!
+                                Assert.IsTrue(er2.Result.TryGetValue(out int v2));
                                 Assert.AreEqual(2, v2);
 
-                                DebugExpressionVariableResult ers1 = getSum(frame);
-                                ers1 = getSum(prevFrame).WithValue(ers1.Value);
+                                DebugExpressionExecVariableResult ers1 = getSum(frame);
                                 // sum is not modified since it was 1 on entering loop on previous pause
-                                Assert.IsFalse(ers1.IsModified);
-                                Assert.IsTrue(ers1.Value.TryGetValue(out int sum1));
+                                Assert.IsFalse(frame.HasModifiedResult(ers1, prevFrame));
+                                Assert.IsTrue(ers1.Result.TryGetValue(out int sum1));
                                 Assert.AreEqual(1, sum1);
                                 break;
 
@@ -2891,6 +2884,39 @@ int a = 0;          // LINE 9
         }
 
         [Test]
+        public void TestCSharp_DebugTracing_L1_Lambda_Return()
+        {
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
+@"using System;
+
+Func<int> c1 = () =>
+{
+    return 42;                // LINE 5
+};
+
+c1();                         // LINE 8
+");
+
+            var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
+            {
+                new ( 8, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 5, ExecEvent.Line, DebugAction.StepIn),
+                new ( 8, ExecEvent.Return, DebugAction.Continue),
+            };
+            controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 8));
+            controls.PauseOnStep += (ExpectedPauseEventStep step, ExecFrame frame) =>
+            {
+                bool pass = frame.Event == step.Event && frame.Reference.Position.LineNumber == step.Line;
+                if (!pass)
+                    TestContext.Progress.WriteLine($"Expected: {step.Event} [{step.Line}:] !! {frame.Event} {frame.Reference.Position}");
+                Assert.IsTrue(pass);
+            };
+
+            code.DebugControls = controls;
+            Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
         public void TestCSharp_DebugTracing_L2()
         {
             Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
@@ -2941,7 +2967,6 @@ void Test() {
 Test();                     // LINE 10
 ");
 
-
             var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
             {
                 new ( 10, ExecEvent.Line, DebugAction.StepIn),
@@ -2990,6 +3015,228 @@ Add(21, 21);            // LINE 17
             {
                 new (17, ExecEvent.Line, DebugAction.StepIn),
                     new ( 9, ExecEvent.Line, DebugAction.StepOut),
+                new (17, ExecEvent.Return, DebugAction.Continue),
+            };
+            controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 17));
+            controls.PauseOnStep += (ExpectedPauseEventStep step, ExecFrame frame) =>
+            {
+                bool pass = frame.Event == step.Event && frame.Reference.Position.LineNumber == step.Line;
+                if (!pass)
+                    TestContext.Progress.WriteLine($"Expected: {step.Event} [{step.Line}:] !! {frame.Event} {frame.Reference.Position}");
+                Assert.IsTrue(pass);
+            };
+
+            code.DebugControls = controls;
+            Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
+        public void TestCSharp_DebugTracing_L2_Lambda_Return()
+        {
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
+@"using System;
+
+Func<int> c2 = () => {
+    return 42;                // LINE 4
+};
+
+Func<int> c1 = () =>
+{
+    return c2();              // LINE 9
+};
+
+c1();                         // LINE 12
+");
+
+            var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
+            {
+                new (12, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 9, ExecEvent.Line, DebugAction.StepIn),
+                        new ( 4, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 9, ExecEvent.Return, DebugAction.StepOut),
+                new (12, ExecEvent.Return, DebugAction.Continue),
+            };
+            controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 12));
+            controls.PauseOnStep += (ExpectedPauseEventStep step, ExecFrame frame) =>
+            {
+                bool pass = frame.Event == step.Event && frame.Reference.Position.LineNumber == step.Line;
+                if (!pass)
+                    TestContext.Progress.WriteLine($"Expected: {step.Event} [{step.Line}:] !! {frame.Event} {frame.Reference.Position}");
+                Assert.IsTrue(pass);
+            };
+
+            code.DebugControls = controls;
+            Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
+        public void TestCSharp_DebugTracing_L3_Return()
+        {
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
+@"
+double ComputeThat(double x) {
+    return x + 21;                  // LINE 3
+}
+double ComputeThis(double x)
+{
+    return ComputeThat(x);          // LINE 7
+}
+void Compute()
+{
+    ComputeThis(21);                // LINE 11
+}
+Compute();                          // LINE 13
+");
+
+
+            var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
+            {
+                new ( 13, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 11, ExecEvent.Line, DebugAction.StepIn),
+                        new ( 7, ExecEvent.Line, DebugAction.StepIn),
+                            new ( 3, ExecEvent.Line, DebugAction.StepOver),
+                        new ( 7, ExecEvent.Return, DebugAction.StepOut),
+                    new ( 11, ExecEvent.Return, DebugAction.StepOut),
+                new ( 13, ExecEvent.Return, DebugAction.Continue),
+            };
+            controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 13));
+            controls.PauseOnStep += (ExpectedPauseEventStep step, ExecFrame frame) =>
+            {
+                bool pass = frame.Event == step.Event && frame.Reference.Position.LineNumber == step.Line;
+                if (!pass)
+                    TestContext.Progress.WriteLine($"Expected: {step.Event} [{step.Line}:] !! {frame.Event} {frame.Reference.Position}");
+                Assert.IsTrue(pass);
+            };
+
+            code.DebugControls = controls;
+            Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
+        public void TestCSharp_DebugTracing_L3_Return_Middle()
+        {
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
+@"
+double ComputeThat(double x) {
+    return x + 21;                  // LINE 3
+}
+double ComputeThis(double x)
+{
+    if (x == 42)
+        return ComputeThat(x);      // LINE 8
+    
+    return 42;
+}
+void Compute()
+{
+    ComputeThis(42);                // LINE 14
+
+    return;
+}
+Compute();                          // LINE 18
+");
+
+            var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
+            {
+                new ( 18, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 14, ExecEvent.Line, DebugAction.StepIn),
+                        new ( 7, ExecEvent.Line, DebugAction.StepOver),
+                        new ( 8, ExecEvent.Line, DebugAction.StepIn),
+                            new ( 3, ExecEvent.Line, DebugAction.StepOver),
+                        new ( 8, ExecEvent.Return, DebugAction.StepOut),
+                    new ( 14, ExecEvent.Return, DebugAction.StepOut),
+                new ( 18, ExecEvent.Return, DebugAction.Continue),
+            };
+            controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 18));
+            controls.PauseOnStep += (ExpectedPauseEventStep step, ExecFrame frame) =>
+            {
+                bool pass = frame.Event == step.Event && frame.Reference.Position.LineNumber == step.Line;
+                if (!pass)
+                    TestContext.Progress.WriteLine($"Expected: {step.Event} [{step.Line}:] !! {frame.Event} {frame.Reference.Position}");
+                Assert.IsTrue(pass);
+            };
+
+            code.DebugControls = controls;
+            Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
+        public void TestCSharp_DebugTracing_L3_Return_End()
+        {
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
+@"
+double ComputeThat(double x) {
+    return x + 21;                  // LINE 3
+}
+double ComputeThis(double x)
+{
+    if (x == 42)
+        return ComputeThat(x);      // LINE 8
+    
+    return 42;
+}
+void Compute()
+{
+    ComputeThis(21);                // LINE 14
+
+    return;
+}
+Compute();                          // LINE 18
+");
+
+            var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
+            {
+                new ( 18, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 14, ExecEvent.Line, DebugAction.StepIn),
+                        new ( 7, ExecEvent.Line, DebugAction.StepOver),
+                        new ( 10, ExecEvent.Line, DebugAction.StepIn),
+                    new ( 14, ExecEvent.Return, DebugAction.StepOut),
+                new ( 18, ExecEvent.Return, DebugAction.Continue),
+            };
+            controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 18));
+            controls.PauseOnStep += (ExpectedPauseEventStep step, ExecFrame frame) =>
+            {
+                bool pass = frame.Event == step.Event && frame.Reference.Position.LineNumber == step.Line;
+                if (!pass)
+                    TestContext.Progress.WriteLine($"Expected: {step.Event} [{step.Line}:] !! {frame.Event} {frame.Reference.Position}");
+                Assert.IsTrue(pass);
+            };
+
+            code.DebugControls = controls;
+            Assert.DoesNotThrow(() => code.Debug(new DebugContext()));
+        }
+
+        [Test]
+        public void TestCSharp_DebugTracing_L3_Lambda_Return()
+        {
+            Code code = GetLanguage(LanguageSpec.CSharp).CreateCode(
+@"using System;
+
+Func<int> c3 = () => {
+    return 42;                // LINE 4
+};
+
+Func<int> c2 = () =>
+{
+    return c3();              // LINE 9
+};
+
+Func<int> c1 = () =>
+{
+    return c2();              // LINE 14
+};
+
+c1();                         // LINE 17
+");
+
+            var controls = new DebugPauseDetectorControls<ExpectedPauseEventStep>
+            {
+                new (17, ExecEvent.Line, DebugAction.StepIn),
+                    new (14, ExecEvent.Line, DebugAction.StepIn),
+                        new ( 9, ExecEvent.Line, DebugAction.StepIn),
+                            new ( 4, ExecEvent.Line, DebugAction.StepIn),
+                        new ( 9, ExecEvent.Return, DebugAction.StepOut),
+                    new (14, ExecEvent.Return, DebugAction.StepOut),
                 new (17, ExecEvent.Return, DebugAction.Continue),
             };
             controls.Breakpoints.Add(new CodeReferenceBreakpoint(code, 17));
